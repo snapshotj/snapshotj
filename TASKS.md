@@ -62,7 +62,7 @@ Wire renderers through the user-facing API. Mismatches throw `AssertionError`. `
 
 Read-only file resolution. No rewriting yet.
 
-- [ ] **3.1 SourceLocator**
+- [x] **3.1 SourceLocator**
   - Goal: from a `StackWalker.StackFrame`, resolve the `.java` file via configurable source roots.
   - Files: `internal/SourceLocator.java`, `SourceLocatorTest.java`
   - Behavior: default roots `src/test/java`, `src/main/java`; override via `-Dsnapshotj.sourceRoots=path1:path2`; missing-file error lists candidates.

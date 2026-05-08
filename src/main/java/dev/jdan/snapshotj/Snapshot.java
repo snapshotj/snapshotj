@@ -3,6 +3,8 @@ package dev.jdan.snapshotj;
 import dev.jdan.snapshotj.internal.CsvRenderer;
 import dev.jdan.snapshotj.internal.JsonRenderer;
 import dev.jdan.snapshotj.internal.Normalizer;
+import dev.jdan.snapshotj.internal.SourceLocator;
+import dev.jdan.snapshotj.internal.SourceLocator.CallerFrame;
 
 import java.util.Objects;
 import java.util.function.Function;
@@ -38,6 +40,8 @@ public final class Snapshot<T> {
         Objects.requireNonNull(expected, "expected");
         Objects.requireNonNull(renderer, "renderer");
 
+        CallerFrame caller = SourceLocator.callerFrame();
+
         String actual = renderer.apply(value);
         if (actual == null) {
             throw new IllegalStateException("renderer returned null");
@@ -50,7 +54,8 @@ public final class Snapshot<T> {
         }
 
         throw new AssertionError(
-                "snapshot mismatch\nexpected:\n" + normalizedExpected
+                "snapshot mismatch at " + caller.fileName() + ":" + caller.lineNumber()
+                        + "\nexpected:\n" + normalizedExpected
                         + "\nactual:\n" + normalizedActual);
     }
 

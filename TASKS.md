@@ -68,7 +68,7 @@ Read-only file resolution. No rewriting yet.
   - Behavior: default roots `src/test/java`, `src/main/java`; override via `-Dsnapshotj.sourceRoots=path1:path2`; missing-file error lists candidates.
   - Done when: happy path resolves; override resolves; missing file produces a clear, actionable error message.
 
-- [ ] **3.2 Caller frame discovery**
+- [x] **3.2 Caller frame discovery**
   - Goal: in `Snapshot`, walk the stack and capture the first frame outside `dev.jdan.snapshotj`. Capture class name, file name, line number.
   - Files: extend `Snapshot.java`; helper in `internal/SourceLocator.java`
   - Done when: a test that calls `matchesJson` from any package gets the correct file + line; nested helpers in user code don't accidentally point inside snapshotj.

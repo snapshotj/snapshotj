@@ -19,7 +19,36 @@ import java.util.Objects;
  */
 public final class SourceLocator {
 
+    private static final String SNAPSHOTJ_PREFIX = "dev.jdan.snapshotj.";
+
     private SourceLocator() {}
+
+    /** Captured location of the first stack frame outside {@code dev.jdan.snapshotj.*}. */
+    public record CallerFrame(String className, String fileName, int lineNumber) {}
+
+    /**
+     * Walks the current thread's stack and returns the first frame whose declaring
+     * class is not part of {@code dev.jdan.snapshotj.*}. Throws
+     * {@link IllegalStateException} if no such frame exists, or if the matched
+     * frame's source file name is unavailable (compiled without the SourceFile
+     * attribute).
+     */
+    public static CallerFrame callerFrame() {
+        return StackWalker.getInstance().walk(frames -> frames
+                .filter(f -> !f.getClassName().startsWith(SNAPSHOTJ_PREFIX))
+                .findFirst()
+                .map(f -> {
+                    String fileName = f.getFileName();
+                    if (fileName == null) {
+                        throw new IllegalStateException(
+                                "no source file name for frame " + f.getClassName()
+                                        + "; compile with debug info to enable snapshot rewriting");
+                    }
+                    return new CallerFrame(f.getClassName(), fileName, f.getLineNumber());
+                })
+                .orElseThrow(() -> new IllegalStateException(
+                        "could not locate caller frame outside dev.jdan.snapshotj")));
+    }
 
     public static Path locate(String className, String fileName) {
         return locate(className, fileName, SnapshotConfig.sourceRoots());

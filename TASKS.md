@@ -147,11 +147,11 @@ These can only land once Phases 1–8 are green.
 
 ## Phase 10 — Smoke & verification
 
-- [ ] **10.1 Smoke test**
+- [x] **10.1 Smoke test**
   - Files: `src/test/java/dev/jdan/snapshotj/smoke/`
   - Goal: a hand-written test using `snap(...).matchesJson(...)` against a real POJO. Manually break it, run with `SNAPSHOTJ_UPDATE=1`, confirm the source is rewritten and the test fails with the expected message; rerun without the env var, confirm green.
 
-- [ ] **10.2 `publishToMavenLocal` dry-run**
+- [x] **10.2 `publishToMavenLocal` dry-run**
   - Goal: confirms POM, sources jar, javadoc jar all build cleanly. POM metadata can still be placeholder.
   - Done when: `./gradlew publishToMavenLocal` succeeds and the artifacts appear under `~/.m2/repository/dev/jdan/snapshotj/`.
 

@@ -1,5 +1,6 @@
 plugins {
     id("java")
+    id("maven-publish")
 }
 
 group = "dev.jdan"
@@ -32,4 +33,18 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            from(components["java"])
+
+            pom {
+                name.set("snapshotj")
+                description.set("JUnit-agnostic Java 17 library for inline snapshot testing")
+                // TODO(Phase 11): fill in url, licenses, scm, developers before first release
+            }
+        }
+    }
 }

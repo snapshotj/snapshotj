@@ -4,9 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-`snapshotj` is a JUnit-agnostic Java 17 library for **inline** snapshot testing. The expected snapshot is written as a Java text block at the call site; on mismatch the user gets a unified diff, and on opt-in (`.update()` or `SNAPSHOTJ_UPDATE=1`) the literal is rewritten in place. Group `dev.jdan`, targeting Maven Central.
-
-The repo is greenfield — Phase 0 is complete (Gradle wired up, package skeleton with stubs that throw `UnsupportedOperationException`). Real work lives in `PLAN.md` and `TASKS.md`. **Always read `PLAN.md` first** — design decisions and pushback live there, not in TASKS.md.
+`snapshotj` = JUnit-agnostic Java 17 library for **inline** snapshot testing. Expected snapshot written as Java text block at call site; on mismatch user gets unified diff, on opt-in (`.update()` or `SNAPSHOTJ_UPDATE=1`) literal rewritten in place. Group `dev.jdan`, targets Maven Central. Current version `0.1.0` (pre-1.0, semver — public API may shift on minor bumps).
 
 ## Commands
 
@@ -15,16 +13,16 @@ The repo is greenfield — Phase 0 is complete (Gradle wired up, package skeleto
 - `./gradlew test --tests dev.jdan.snapshotj.internal.NormalizerTest` — single test class
 - `./gradlew test --tests '*NormalizerTest.normalizesTrailingNewlines'` — single test method
 - `./gradlew dependencies` — verify dep tree
-- `./gradlew publishToMavenLocal` — once publish plugins land (Phase 11), validates POM/sources/javadoc jars
+- `./gradlew publishToMavenLocal` — validates POM/sources/javadoc jars locally (publish workflow in `.github/workflows/`)
 
 ## Architecture
 
-The user-facing surface is intentionally tiny — one static entry point and a fluent builder:
+User-facing surface tiny — one static entry point + fluent builder:
 
 ```
 dev.jdan.snapshotj
 ├── Snap                # static snap(value) entry
-├── Snapshot            # update(), matches(expected, renderer), matchesJson, matchesCsv
+├── Snapshot            # update(), replacing(type, placeholder), matches(expected, renderer), matchesJson, matchesCsv
 ├── SnapshotConfig      # env var / sysprop reads (SNAPSHOTJ_UPDATE, snapshotj.update, snapshotj.sourceRoots)
 └── internal/           # everything else; not exported by intent
     ├── Normalizer          # canonical form: strip trailing whitespace + final newlines
@@ -37,26 +35,25 @@ dev.jdan.snapshotj
     └── DiffFormatter       # java-diff-utils → unified diff for AssertionError messages
 ```
 
-`matches(expected, Function<T,String> renderer)` is the **single primitive**. `matchesJson` / `matchesCsv` are sugar that bind the built-in renderer and delegate. There is no parallel code path for them.
+`matches(expected, Function<T,String> renderer)` = **single primitive** for the custom-renderer path. `matchesJson` / `matchesCsv` render via built-in renderers (honoring `.replacing(...)` registrations) and feed the same private `compare()` helper — no parallel diff/update logic.
 
-### Critical invariants (don't violate without revisiting PLAN.md)
+### Critical invariants
 
-1. **`.update()` always fails the test after rewriting** — never silently green. A `.update()` left in committed code must turn CI red. Failure message: `snapshot updated at <file>:<line>; rerun without .update() to verify`.
+1. **`.update()` always fails test after rewriting** — never silently green. `.update()` left in committed code must turn CI red. Failure message: `snapshot updated at <file>:<line>; rerun without .update() to verify`.
 2. **Comparison normalizes trailing whitespace and trailing newlines on both sides** — Java text blocks have surprising trailing-newline behavior. Normalize once, document as canonical.
-3. **Edits are queued, not applied at mismatch.** A JVM shutdown hook (registered lazily on first edit) flushes per file: reads, applies queued edits in **reverse line order** (so earlier offsets don't shift), writes via `Files.move` from a same-directory temp file.
-4. **Source path discovery uses `src/test/java` and `src/main/java` defaults**, overridable via `-Dsnapshotj.sourceRoots=path1:path2`. Throw a clear error listing candidates if the file can't be located.
-5. **`<snap:ignore>` placeholders are explicitly out of scope for v1.** Don't invent them.
-6. **`matchesTable` is dropped from v1.** Don't add it.
+3. **Edits queued, not applied at mismatch.** JVM shutdown hook (registered lazily on first edit) flushes per file: reads, applies queued edits in **reverse line order** (so earlier offsets don't shift), writes via `Files.move` from same-directory temp file.
+4. **Source path discovery uses `src/test/java` and `src/main/java` defaults**, overridable via `-Dsnapshotj.sourceRoots=path1:path2`. Throw clear error listing candidates if file can't be located.
+5. **`<snap:ignore>` placeholders explicitly out of scope.** Don't parse magic tokens inside the expected literal. `.replacing(Class, String)` solves transients at the renderer layer instead: exact-class match only, `null` cells never replaced, placeholder emitted in both verify and `.update()` mode for stable round-trips. Custom `matches(expected, renderer)` after `.replacing(...)` throws `IllegalStateException` — custom renderer is opaque to the substitution.
+6. **`matchesTable` dropped from v1.** Don't add it.
 
 ## Testing strategy (two layers — both required)
 
-- **Layer 1 (plain `assertEquals`)**: tests for `Normalizer`, `JsonRenderer`, `CsvRenderer`, `TextBlockFinder`, `TextBlockWriter`, `SourceLocator`, `PendingEdits`, `DiffFormatter`. These must NOT use the snapshot machinery — they're the foundation it depends on.
-- **Layer 2 (self-snapshotting, Phase 9 only)**: dogfoods the library against itself for renderer outputs and diff messages. Catches unintentional canonicalization drift.
+- **Layer 1 (plain `assertEquals`)**: tests for `Normalizer`, `JsonRenderer`, `CsvRenderer`, `TextBlockFinder`, `TextBlockWriter`, `SourceLocator`, `PendingEdits`, `DiffFormatter`. Must NOT use snapshot machinery — they're foundation it depends on.
+- **Layer 2 (self-snapshotting)**: dogfoods library against itself for renderer outputs and diff messages. Catches unintentional canonicalization drift. See `DiffMessageSnapshotTest`, `CsvSnapshotTest`, `JsonSnapshotTest`, smoke tests.
 
-`TextBlockFinder` fixtures live under `src/test/resources/fixtures/` and cover edge cases enumerated in TASKS.md §4.1.
+`TextBlockFinder` fixtures live under `src/test/resources/fixtures/`.
 
 ## Workflow notes
 
-- Tasks are tracked in `TASKS.md` with phase ordering — phases build on tested primitives below them. Layer-2 tests can only land after Phases 1–8 are green.
-- When a task's "Done when" can't be met, surface the obstacle and revise the plan; don't paper over it.
-- `internal/` is a package convention, not a JPMS module. If JPMS is ever added, only `dev.jdan.snapshotj` is exported.
+- When a task's "Done when" can't be met, surface the obstacle and revise the approach; don't paper over it.
+- `internal/` is hidden via the JPMS module descriptor at `src/main/java/module-info.java` — only `dev.jdan.snapshotj` is exported. Keep that boundary intact when adding new internals.

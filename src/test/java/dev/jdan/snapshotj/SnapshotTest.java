@@ -1,12 +1,12 @@
 package dev.jdan.snapshotj;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import dev.jdan.snapshotj.internal.JsonRenderer;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Function;
 
 import static dev.jdan.snapshotj.Snap.snap;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -74,14 +74,12 @@ class SnapshotTest {
 
     @Test
     void trailingWhitespaceTolerance() {
-        Function<Integer, String> renderer = n -> "line one\nline two";
-        snap(0).matches("line one   \nline two   \n\n\n", renderer);
+        snap(0).matches("line one   \nline two   \n\n\n", n -> "line one\nline two");
     }
 
     @Test
     void crlfTolerance() {
-        Function<Integer, String> renderer = n -> "alpha\nbeta";
-        snap(0).matches("alpha\r\nbeta\r\n", renderer);
+        snap(0).matches("alpha\r\nbeta\r\n", n -> "alpha\nbeta");
     }
 
     @Test
@@ -115,8 +113,8 @@ class SnapshotTest {
                 Instant.now(),
                 "Ada");
         snap(u)
-                .replacing(UUID.class, "<uuid>")
-                .replacing(Instant.class, "<timestamp>")
+                .replacingType(UUID.class, "<uuid>")
+                .replacingType(Instant.class, "<timestamp>")
                 .matchesJson("""
                         {
                           "createdAt" : "<timestamp>",
@@ -131,8 +129,8 @@ class SnapshotTest {
         UUID a = UUID.randomUUID();
         UUID b = UUID.randomUUID();
         snap(List.of(new User(a, Instant.now(), "Ada"), new User(b, Instant.now(), "Grace")))
-                .replacing(UUID.class, "<uuid>")
-                .replacing(Instant.class, "<ts>")
+                .replacingType(UUID.class, "<uuid>")
+                .replacingType(Instant.class, "<ts>")
                 .matchesCsv("""
                         createdAt,id,name
                         <ts>,<uuid>,Ada
@@ -146,8 +144,8 @@ class SnapshotTest {
         AssertionError err = assertThrows(
                 AssertionError.class,
                 () -> snap(u)
-                        .replacing(UUID.class, "<uuid>")
-                        .replacing(Instant.class, "<ts>")
+                        .replacingType(UUID.class, "<uuid>")
+                        .replacingType(Instant.class, "<ts>")
                         .matchesJson("""
                                 {
                                   "createdAt" : "<ts>",
@@ -159,44 +157,40 @@ class SnapshotTest {
     }
 
     @Test
-    void replacingWithCustomMatchesThrows() {
-        IllegalStateException ex = assertThrows(
-                IllegalStateException.class,
-                () -> snap(UUID.randomUUID())
-                        .replacing(UUID.class, "<uuid>")
-                        .matches("<uuid>", Object::toString));
-        assertTrue(ex.getMessage().contains("matchesJson"), ex.getMessage());
-        assertTrue(ex.getMessage().contains("matchesCsv"), ex.getMessage());
+    void replacingTypeAppliesInCustomMatches() {
+        snap(UUID.randomUUID())
+                .replacingType(UUID.class, "<uuid>")
+                .matches("<uuid>", JsonNode::asText);
     }
 
     @Test
     void replacingNullTypeThrows() {
         assertThrows(
                 NullPointerException.class,
-                () -> snap(42).replacing(null, "<x>"));
+                () -> snap(42).replacingType(null, "<x>"));
     }
 
     @Test
     void replacingNullPlaceholderThrows() {
         assertThrows(
                 NullPointerException.class,
-                () -> snap(42).replacing(UUID.class, null));
+                () -> snap(42).replacingType(UUID.class, null));
     }
 
     @Test
     void replacingEmptyPlaceholderThrows() {
         assertThrows(
                 IllegalArgumentException.class,
-                () -> snap(42).replacing(UUID.class, ""));
+                () -> snap(42).replacingType(UUID.class, ""));
     }
 
     @Test
     void replacingSameTypeTwiceOverwrites() {
         UUID id = UUID.fromString("11111111-2222-3333-4444-555555555555");
         snap(new User(id, Instant.parse("2026-01-01T00:00:00Z"), "Ada"))
-                .replacing(UUID.class, "<first>")
-                .replacing(UUID.class, "<second>")
-                .replacing(Instant.class, "<ts>")
+                .replacingType(UUID.class, "<first>")
+                .replacingType(UUID.class, "<second>")
+                .replacingType(Instant.class, "<ts>")
                 .matchesJson("""
                         {
                           "createdAt" : "<ts>",
@@ -216,7 +210,7 @@ class SnapshotTest {
                 }
                 """;
         assertDoesNotThrow(() -> snap(p).matchesJson(expected));
-        assertDoesNotThrow(() -> snap(p).matches(expected, JsonRenderer::render));
+        assertDoesNotThrow(() -> snap(p).matches(expected, JsonRenderer::renderTree));
 
         String wrong = """
                 {
@@ -225,6 +219,244 @@ class SnapshotTest {
                 }
                 """;
         assertThrows(AssertionError.class, () -> snap(p).matchesJson(wrong));
-        assertThrows(AssertionError.class, () -> snap(p).matches(wrong, JsonRenderer::render));
+        assertThrows(AssertionError.class, () -> snap(p).matches(wrong, JsonRenderer::renderTree));
+    }
+
+    record Auto(long id, String name) {}
+
+    record WrapAuto(Auto user) {}
+
+    @Test
+    void replacingFieldNeutralizesAnchoredRootInJson() {
+        snap(new Auto(System.nanoTime(), "Ada"))
+                .replacingField("$.id", "<id>")
+                .matchesJson("""
+                        {
+                          "id" : "<id>",
+                          "name" : "Ada"
+                        }
+                        """);
+    }
+
+    @Test
+    void replacingFieldNeutralizesNestedAnchoredInJson() {
+        snap(new WrapAuto(new Auto(System.nanoTime(), "Ada")))
+                .replacingField("$.user.id", "<id>")
+                .matchesJson("""
+                        {
+                          "user" : {
+                            "id" : "<id>",
+                            "name" : "Ada"
+                          }
+                        }
+                        """);
+    }
+
+    record Tree(long id, Tree child) {}
+
+    @Test
+    void replacingFieldRecursiveDescentReplacesAllInJson() {
+        snap(new Tree(1L, new Tree(2L, null)))
+                .replacingField("..id", "<id>")
+                .matchesJson("""
+                        {
+                          "child" : {
+                            "child" : null,
+                            "id" : "<id>"
+                          },
+                          "id" : "<id>"
+                        }
+                        """);
+    }
+
+    @Test
+    void replacingFieldAnchoredIsScoped() {
+        snap(new WrapAuto(new Auto(99L, "Ada")))
+                .replacingField("$.user.id", "<id>")
+                .matchesJson("""
+                        {
+                          "user" : {
+                            "id" : "<id>",
+                            "name" : "Ada"
+                          }
+                        }
+                        """);
+    }
+
+    record HasUuidId(UUID id, String name) {}
+
+    @Test
+    void replacingFieldWinsOverType() {
+        snap(new HasUuidId(UUID.randomUUID(), "Ada"))
+                .replacingType(UUID.class, "<uuid>")
+                .replacingField("$.id", "<id>")
+                .matchesJson("""
+                        {
+                          "id" : "<id>",
+                          "name" : "Ada"
+                        }
+                        """);
+    }
+
+    record Box(String name, String marker) {}
+
+    @Test
+    void replacingFieldOnNullStillReplacesInJson() {
+        snap(new Box("Ada", null))
+                .replacingField("$.marker", "<set>")
+                .matchesJson("""
+                        {
+                          "marker" : "<set>",
+                          "name" : "Ada"
+                        }
+                        """);
+    }
+
+    @Test
+    void replacingFieldNoMatchThrowsInJson() {
+        AssertionError err = assertThrows(
+                AssertionError.class,
+                () -> snap(new Auto(1L, "Ada"))
+                        .replacingField("$.missing", "<x>")
+                        .matchesJson("""
+                                {
+                                  "id" : 1,
+                                  "name" : "Ada"
+                                }
+                                """));
+        assertTrue(err.getMessage().contains("$.missing"), err.getMessage());
+    }
+
+    @Test
+    void replacingFieldRecursiveNoMatchThrowsInJson() {
+        AssertionError err = assertThrows(
+                AssertionError.class,
+                () -> snap(new Auto(1L, "Ada"))
+                        .replacingField("..nonexistent", "<x>")
+                        .matchesJson("""
+                                {
+                                  "id" : 1,
+                                  "name" : "Ada"
+                                }
+                                """));
+        assertTrue(err.getMessage().contains("..nonexistent"), err.getMessage());
+    }
+
+    @Test
+    void replacingFieldSamePathTwiceOverwrites() {
+        snap(new Auto(1L, "Ada"))
+                .replacingField("$.id", "<first>")
+                .replacingField("$.id", "<second>")
+                .matchesJson("""
+                        {
+                          "id" : "<second>",
+                          "name" : "Ada"
+                        }
+                        """);
+    }
+
+    @Test
+    void replacingFieldBarePathRejected() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> snap(new Auto(1L, "Ada")).replacingField("id", "<x>"));
+    }
+
+    @Test
+    void replacingFieldNullPathThrows() {
+        assertThrows(
+                NullPointerException.class,
+                () -> snap(new Auto(1L, "Ada")).replacingField(null, "<x>"));
+    }
+
+    @Test
+    void replacingFieldNullPlaceholderThrows() {
+        assertThrows(
+                NullPointerException.class,
+                () -> snap(new Auto(1L, "Ada")).replacingField("$.id", null));
+    }
+
+    @Test
+    void replacingFieldEmptyPlaceholderThrows() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> snap(new Auto(1L, "Ada")).replacingField("$.id", ""));
+    }
+
+    @Test
+    void replacingFieldAppliesInCustomMatches() {
+        snap(new Auto(1L, "Ada"))
+                .replacingField("$.id", "<id>")
+                .matches("""
+                        {"id":"<id>","name":"Ada"}""",
+                        JsonNode::toString);
+    }
+
+    @Test
+    void replacingFieldAnchoredColumnInCsv() {
+        snap(List.of(new Auto(1L, "Ada"), new Auto(2L, "Grace")))
+                .replacingField("$.id", "<id>")
+                .matchesCsv("""
+                        id,name
+                        <id>,Ada
+                        <id>,Grace
+                        """);
+    }
+
+    @Test
+    void replacingFieldRecursiveColumnInCsv() {
+        snap(List.of(new Auto(1L, "Ada"), new Auto(2L, "Grace")))
+                .replacingField("..id", "<id>")
+                .matchesCsv("""
+                        id,name
+                        <id>,Ada
+                        <id>,Grace
+                        """);
+    }
+
+    @Test
+    void replacingFieldNestedPathOnCsvThrows() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> snap(List.of(new Auto(1L, "Ada")))
+                        .replacingField("$.foo.id", "<id>")
+                        .matchesCsv("""
+                                id,name
+                                <id>,Ada
+                                """));
+    }
+
+    @Test
+    void replacingFieldColumnMissingInCsvThrows() {
+        AssertionError err = assertThrows(
+                AssertionError.class,
+                () -> snap(List.of(new Auto(1L, "Ada")))
+                        .replacingField("$.missing", "<x>")
+                        .matchesCsv("""
+                                id,name
+                                1,Ada
+                                """));
+        assertTrue(err.getMessage().contains("missing"), err.getMessage());
+    }
+
+    @Test
+    void replacingFieldWinsOverTypeInCsv() {
+        snap(List.of(new HasUuidId(UUID.randomUUID(), "Ada")))
+                .replacingType(UUID.class, "<uuid>")
+                .replacingField("$.id", "<id>")
+                .matchesCsv("""
+                        id,name
+                        <id>,Ada
+                        """);
+    }
+
+    @Test
+    void replacingFieldOnNullCellInCsv() {
+        snap(List.of(new Box("Ada", null)))
+                .replacingField("$.marker", "<set>")
+                .matchesCsv("""
+                        marker,name
+                        <set>,Ada
+                        """);
     }
 }

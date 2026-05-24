@@ -139,6 +139,7 @@ public final class CsvRenderer {
             FieldPath path = FieldPath.parse(e.getKey());
             List<Segment> segs = path.segments();
             if (segs.size() != 1) {
+                // TODO(dan): this is not correct; current CSV parses nested objects into JSONs (which is also not correct, better repr should exist)
                 throw new IllegalArgumentException(
                         "path '" + e.getKey() + "' is not applicable to CSV — CSV is flat");
             }

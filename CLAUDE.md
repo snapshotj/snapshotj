@@ -22,7 +22,7 @@ User-facing surface tiny — one static entry point + fluent builder. Internals 
 ```
 dev.jdan.snapshotj
 ├── Snap                # static snap(value) + configure() entry points
-├── ConfiguredSnap      # reusable immutable factory: replacingType, replacingField, snap(value)
+├── ConfiguredSnap      # reusable immutable factory: replacingType, replacingField, of(value)
 ├── Snapshot            # update(), replacingType, replacingField, matches(expected, Function<JsonNode,String>), matchesJson, matchesCsv
 ├── SnapshotConfig      # env var / sysprop reads (SNAPSHOTJ_UPDATE, snapshotj.update, snapshotj.sourceRoots)
 └── internal/           # everything else; not exported by intent
@@ -43,7 +43,7 @@ dev.jdan.snapshotj
 
 `com.fasterxml.jackson.databind.JsonNode` is re-exported via `requires transitive` in `module-info.java` so modular consumers can name it in custom-renderer lambdas.
 
-`Snap.snap(v)` is sugar for `Snap.configure().snap(v)`: both go through a private empty `ConfiguredSnap.DEFAULT`, so the static and configured paths share one construction route. `ConfiguredSnap` is immutable — each `.replacingType/.replacingField` returns a new instance, so a `static final ConfiguredSnap` field can be shared across tests and threads. Per-call `.replacingType/.replacingField` on the `Snapshot` returned by `ConfiguredSnap.snap(value)` layers atop the seed and wins on key conflict (`LinkedHashMap.put` overwrite).
+`Snap.snap(v)` is sugar for `Snap.configure().of(v)`: both go through a private empty `ConfiguredSnap.DEFAULT`, so the static and configured paths share one construction route. The static entry stays named `snap` so `snap(obj).matchesJson(...)` reads naturally; the configured factory uses `of` so `SNAP.of(obj)` avoids "snap.snap" stutter. `ConfiguredSnap` is immutable — each `.replacingType/.replacingField` returns a new instance, so a `static final ConfiguredSnap` field can be shared across tests and threads. Per-call `.replacingType/.replacingField` on the `Snapshot` returned by `ConfiguredSnap.of(value)` layers atop the seed and wins on key conflict (`LinkedHashMap.put` overwrite).
 
 ### Critical invariants
 

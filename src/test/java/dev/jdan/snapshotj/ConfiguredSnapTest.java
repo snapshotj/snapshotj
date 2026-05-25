@@ -92,7 +92,7 @@ class ConfiguredSnapTest {
                 .replacingType(UUID.class, "<uuid>")
                 .replacingType(Instant.class, "<ts>");
         User u = new User(UUID.randomUUID(), Instant.now(), "Ada");
-        snap.snap(u).matchesJson("""
+        snap.of(u).matchesJson("""
                 {
                   "createdAt" : "<ts>",
                   "id" : "<uuid>",
@@ -104,7 +104,7 @@ class ConfiguredSnapTest {
     @Test
     void snapSeedsFieldReplacements() {
         ConfiguredSnap snap = Snap.configure().replacingField("$.id", "<id>");
-        snap.snap(new Auto(System.nanoTime(), "Ada")).matchesJson("""
+        snap.of(new Auto(System.nanoTime(), "Ada")).matchesJson("""
                 {
                   "id" : "<id>",
                   "name" : "Ada"
@@ -116,7 +116,7 @@ class ConfiguredSnapTest {
     void perCallTypeOverridesSeed() {
         ConfiguredSnap snap = Snap.configure().replacingType(UUID.class, "<seed>");
         UUID id = UUID.fromString("11111111-2222-3333-4444-555555555555");
-        snap.snap(new User(id, Instant.parse("2026-01-01T00:00:00Z"), "Ada"))
+        snap.of(new User(id, Instant.parse("2026-01-01T00:00:00Z"), "Ada"))
                 .replacingType(UUID.class, "<call>")
                 .replacingType(Instant.class, "<ts>")
                 .matchesJson("""
@@ -131,7 +131,7 @@ class ConfiguredSnapTest {
     @Test
     void perCallFieldOverridesSeed() {
         ConfiguredSnap snap = Snap.configure().replacingField("$.id", "<seed>");
-        snap.snap(new Auto(1L, "Ada"))
+        snap.of(new Auto(1L, "Ada"))
                 .replacingField("$.id", "<call>")
                 .matchesJson("""
                         {
@@ -144,7 +144,7 @@ class ConfiguredSnapTest {
     @Test
     void perCallLayersAdditivelyOnSeed() {
         ConfiguredSnap snap = Snap.configure().replacingType(UUID.class, "<uuid>");
-        snap.snap(new User(UUID.randomUUID(), Instant.now(), "Ada"))
+        snap.of(new User(UUID.randomUUID(), Instant.now(), "Ada"))
                 .replacingType(Instant.class, "<ts>")
                 .matchesJson("""
                         {
@@ -161,7 +161,7 @@ class ConfiguredSnapTest {
         base.replacingType(UUID.class, "<uuid>");
         AssertionError err = assertThrows(
                 AssertionError.class,
-                () -> base.snap(new User(UUID.randomUUID(), Instant.now(), "Ada"))
+                () -> base.of(new User(UUID.randomUUID(), Instant.now(), "Ada"))
                         .matchesJson("""
                                 {
                                   "createdAt" : "<ts>",
@@ -174,14 +174,14 @@ class ConfiguredSnapTest {
     }
 
     @Test
-    void staticSnapEquivalentToConfigureSnap() {
+    void staticSnapEquivalentToConfigureOf() {
         Snap.snap(new Auto(1L, "Ada")).matchesJson("""
                 {
                   "id" : 1,
                   "name" : "Ada"
                 }
                 """);
-        Snap.configure().snap(new Auto(1L, "Ada")).matchesJson("""
+        Snap.configure().of(new Auto(1L, "Ada")).matchesJson("""
                 {
                   "id" : 1,
                   "name" : "Ada"

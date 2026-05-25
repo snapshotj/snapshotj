@@ -12,7 +12,7 @@ import java.util.Objects;
  * <p>Use when many assertions in a test class share the same transient-value
  * substitutions ({@link #replacingType(Class, String)} / {@link #replacingField(String, String)}).
  * Build the factory once, typically as a {@code static final} field, then call
- * {@link #snap(Object)} per assertion:
+ * {@link #of(Object)} per assertion:
  *
  * <pre>{@code
  * class MyTest {
@@ -23,7 +23,7 @@ import java.util.Objects;
  *
  *     @Test
  *     void example() {
- *         SNAP.snap(someObject).matchesJson("""
+ *         SNAP.of(someObject).matchesJson("""
  *                 { ... }
  *                 """);
  *     }
@@ -37,7 +37,7 @@ import java.util.Objects;
  * conflict against the configured seed — see {@link Snapshot#replacingType(Class, String)}
  * and {@link Snapshot#replacingField(String, String)}.
  *
- * <p>{@link Snap#snap(Object)} is sugar for {@code Snap.configure().snap(value)}; both
+ * <p>{@link Snap#snap(Object)} is sugar for {@code Snap.configure().of(value)}; both
  * paths share one construction route via an empty {@code ConfiguredSnap}.
  */
 public final class ConfiguredSnap {
@@ -112,7 +112,7 @@ public final class ConfiguredSnap {
      * @param <T>   the value type
      * @return a fluent comparison handle seeded with this factory's replacements
      */
-    public <T> Snapshot<T> snap(T value) {
+    public <T> Snapshot<T> of(T value) {
         return new Snapshot<>(value, typeReplacements, fieldReplacements);
     }
 }

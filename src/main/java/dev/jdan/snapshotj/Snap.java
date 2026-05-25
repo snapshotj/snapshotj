@@ -28,10 +28,10 @@ import java.util.Map;
  *         .replacingType(UUID.class, "<uuid>")
  *         .replacingType(Instant.class, "<ts>");
  *
- * SNAP.snap(value).matchesJson("""...""");
+ * SNAP.of(value).matchesJson("""...""");
  * }</pre>
  *
- * <p>{@code Snap.snap(v)} is sugar for {@code Snap.configure().snap(v)} — both share one
+ * <p>{@code Snap.snap(v)} is sugar for {@code Snap.configure().of(v)} — both share one
  * construction route via a hidden empty {@code ConfiguredSnap}.
  *
  * <p>On mismatch the test fails with a unified diff. To rewrite the expected literal
@@ -47,14 +47,14 @@ public final class Snap {
     /**
      * Wrap {@code value} in a {@link Snapshot} handle for inline comparison.
      *
-     * <p>Equivalent to {@code Snap.configure().snap(value)} with no replacements seeded.
+     * <p>Equivalent to {@code Snap.configure().of(value)} with no replacements seeded.
      *
      * @param value the actual value under test; may be {@code null} if the renderer accepts it
      * @param <T>   the value type
      * @return a fluent comparison handle
      */
     public static <T> Snapshot<T> snap(T value) {
-        return DEFAULT.snap(value);
+        return DEFAULT.of(value);
     }
 
     /**
@@ -63,7 +63,7 @@ public final class Snap {
      *
      * <p>Chain {@link ConfiguredSnap#replacingType(Class, String)} and
      * {@link ConfiguredSnap#replacingField(String, String)} to seed substitutions, then call
-     * {@link ConfiguredSnap#snap(Object)} per assertion. Each fluent method returns a new
+     * {@link ConfiguredSnap#of(Object)} per assertion. Each fluent method returns a new
      * {@code ConfiguredSnap}; the receiver is unchanged, so storing the result as a
      * {@code static final} field is safe across threads and tests.
      *

@@ -21,7 +21,7 @@ class ConfiguredSnapSnapshotTest {
                 UUID.randomUUID(),
                 Instant.now(),
                 "open");
-        SNAP.snap(r).matchesJson("""
+        SNAP.of(r).matchesJson("""
                 {
                   "action" : "open",
                   "requestId" : "<req-id>",
@@ -38,7 +38,7 @@ class ConfiguredSnapSnapshotTest {
                 UUID.randomUUID(),
                 Instant.now(),
                 "close");
-        SNAP.snap(r).matchesJson("""
+        SNAP.of(r).matchesJson("""
                 {
                   "action" : "close",
                   "requestId" : "<req-id>",
@@ -55,7 +55,7 @@ class ConfiguredSnapSnapshotTest {
                 UUID.randomUUID(),
                 Instant.now(),
                 "audit");
-        SNAP.snap(r)
+        SNAP.of(r)
                 .replacingType(UUID.class, "<masked-user>")
                 .matchesJson("""
                         {

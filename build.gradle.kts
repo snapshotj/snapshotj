@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "dev.jdan"
-version = "0.1.0"
+version = "0.2.0"
 
 val javaVersion = (findProperty("javaVersion") as String?)?.toInt() ?: 17
 

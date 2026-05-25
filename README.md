@@ -1,8 +1,11 @@
 # snapshotj
 
+[![Build](https://github.com/djavorszky/snapshotj/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/djavorszky/snapshotj/actions/workflows/main.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/dev.jdan/snapshotj.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/dev.jdan/snapshotj)
+
 A JUnit-agnostic Java 17 library for **inline** snapshot testing. The expected snapshot lives as a Java text block at the call site; on mismatch you get a unified diff, and on opt-in the literal is rewritten in place.
 
-> **Status:** `0.1.0` (semver, pre-1.0 — public API may shift on minor bumps). Not yet published to Maven Central — see [`TASKS.md`](TASKS.md) Phase 11.
+> **Status:** `0.2.0` (semver, pre-1.0 — public API may shift on minor bumps). Not yet published to Maven Central.
 
 ## TL;DR
 
@@ -42,7 +45,7 @@ Not yet published. Once the first release lands:
 ```kotlin
 // build.gradle.kts
 dependencies {
-    testImplementation("dev.jdan:snapshotj:0.1.0")
+    testImplementation("dev.jdan:snapshotj:0.2.0")
 }
 ```
 
@@ -51,7 +54,7 @@ dependencies {
 <dependency>
     <groupId>dev.jdan</groupId>
     <artifactId>snapshotj</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.0</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -166,7 +169,7 @@ Requires JDK 17 (the Gradle toolchain resolves it automatically if missing).
 
 ## Contributing
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the workflow, invariants, and testing strategy. Read [`PLAN.md`](PLAN.md) before non-trivial changes — design decisions live there, not in `TASKS.md`.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the workflow, invariants, and testing strategy.
 
 ## License
 

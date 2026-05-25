@@ -4,8 +4,7 @@ Thanks for your interest in contributing. This document covers what you need to 
 
 ## Before you start
 
-- Read `PLAN.md` first — it contains the design decisions and the pushback behind them. `TASKS.md` is the implementation checklist; `PLAN.md` is the source of truth.
-- Check the open task list in `TASKS.md` and the issue tracker before starting work on something non-trivial. Mention which task or issue you're picking up.
+- Check the issue tracker before starting work on something non-trivial. Mention which issue you're picking up.
 - For anything that changes the public API (`Snap`, `Snapshot`, `SnapshotConfig`) or violates one of the invariants listed below, open an issue first to discuss the change.
 
 ## Requirements
@@ -41,8 +40,6 @@ dev.jdan.snapshotj
 
 ## Invariants you must not break
 
-These come from `PLAN.md`. If a change requires breaking one of them, revisit the plan first.
-
 1. **`.update()` always fails the test after rewriting.** A `.update()` left in committed code must turn CI red. Never make it silently green.
 2. **Comparison normalizes trailing whitespace and trailing newlines on both sides.** Normalization happens in one place (`Normalizer`) and is documented as the canonical form.
 3. **Edits are queued, not applied at mismatch.** A JVM shutdown hook flushes per file: reads, applies queued edits in reverse line order, writes via `Files.move` from a same-directory temp file.
@@ -57,7 +54,7 @@ Two layers, both required:
 - **Layer 1 — plain `assertEquals`**: covers `Normalizer`, `JsonRenderer`, `CsvRenderer`, `TextBlockFinder`, `TextBlockWriter`, `SourceLocator`, `PendingEdits`, `DiffFormatter`. These tests must **not** use the snapshot machinery — they are the foundation it relies on.
 - **Layer 2 — self-snapshotting**: dogfoods the library against itself for renderer outputs and diff messages. Catches accidental canonicalization drift. Layer 2 tests can only land after the underlying primitive is green at Layer 1.
 
-`TextBlockFinder` fixtures live under `src/test/resources/fixtures/`. Cover the edge cases enumerated in `TASKS.md §4.1` when adding parser changes.
+`TextBlockFinder` fixtures live under `src/test/resources/fixtures/`.
 
 New behaviour needs a test. Bug fixes need a regression test that fails without the fix.
 
@@ -72,7 +69,7 @@ New behaviour needs a test. Bug fixes need a regression test that fails without 
 
 - Write commits that explain *why*, not just *what*. The diff already shows the what.
 - Prefer small, focused commits over one large catch-all commit. Rebase before opening the PR.
-- PR description should state the user-visible change, the motivation, and any decisions worth flagging for review. Link the relevant `TASKS.md` task or issue.
+- PR description should state the user-visible change, the motivation, and any decisions worth flagging for review. Link the relevant issue.
 - Don't merge your own PR. Wait for review.
 
 ## Reporting bugs
